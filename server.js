@@ -3,14 +3,9 @@ const generatecode = require("./rest/code-generator");
 const app = express();
 const server = require("http").Server(app);
 const db = require("./db");
-const { reset } = require("nodemon");
-const io = require("socket.io")(server, {
-  cors: {
-    origin: ["http://localhost:8080"],
-  },
-});
+const io = require("socket.io")(server);
 
-app.use(express.static("../client/dist"));
+app.use(express.static("./public"));
 
 io.on("connection", (socket) => {
   socket.on("click", (data) => {
