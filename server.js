@@ -1,45 +1,29 @@
+//creating the server with socket.io
 const express = require("express");
-const generatecode = require("./rest/code-generator");
 const app = express();
 const server = require("http").Server(app);
-const db = require("./db");
 const io = require("socket.io")(server);
+//code generator
+const generatecode = require("./rest/code-generator");
+//database
+const db = require("./db");
 
+//setting up the static site for the client
 app.use(express.static("./public"));
 
+//socket.io events
 io.on("connection", (socket) => {
-  socket.on("click", (data) => {
-    const actualRoom = getRoom(data.room);
-    if (actualRoom.message) {
-      socket.emit("no-room");
-      return;
-    }
-    if (data.preConnect == true) {
-      socket.join(actualRoom.code);
-      return;
-    }
-    if (actualRoom.user1name === data.username)
-      actualRoom.user1fields.push(data.cell);
-    if (actualRoom.user2name === data.username)
-      actualRoom.user2fields.push(data.cell);
-    socket.to(actualRoom.code).emit("opponent-click", data.cell);
-  });
-  socket.on("win", (data) => {
-    const actualRoom = getRoom(data.room);
-    if (actualRoom.message) {
-      socket.emit("no-room");
-      return;
-    }
-    if (actualRoom.user1symbol == data.player) actualRoom.user1wins++;
-    if (actualRoom.user2symbol == data.player) actualRoom.user2wins++;
-    socket.to(actualRoom.code).emit("lose", data.player);
-  });
+  //handling when the user joining a room
+  socket.on("user-data", (data) => handleConnect(data, socket));
+  //setting the users on the based on their actions
   socket.on("set-user", (data) => {
-    const actualRoom = getRoom(data.room);
-    if (actualRoom.message) {
-      socket.emit("no-room");
+    const actualRoom = getRoom(data.room, socket);
+    if (actualRoom == "no-room") return;
+    if (actualRoom.user1symbol != "") {
+      socket.emit("sync-user"); // this should fix the synchronization problem when they're both clicking early
       return;
     }
+    //setting the symbols, the set-user only activates once - on the firs click
     if (actualRoom.user1name === data.username) {
       actualRoom.user1symbol = "X";
       actualRoom.user2symbol = "O";
@@ -50,22 +34,11 @@ io.on("connection", (socket) => {
     }
     socket.to(actualRoom.code).emit("set-opponent", "O");
   });
-  socket.on("tie", (data) => {
-    const actualRoom = getRoom(data.room); //TODO when refactoring: bring this code into the getRoom method
-    if (actualRoom.message) {
-      socket.emit("no-room");
-      return;
-    }
-    actualRoom.ties++;
-    socket.to(actualRoom.code).emit("tie");
-  });
-  socket.on("user-data", (data) => handleConnect(data, socket));
+  //in case of an existing room, the client call the server for information
   socket.on("check-room", (data) => {
-    const actualRoom = getRoom(data.room);
-    if (actualRoom.message) {
-      socket.emit("no-room");
-      return;
-    }
+    const actualRoom = getRoom(data.room, socket);
+    if (actualRoom == "no-room") return;
+    //if the room is full and you're not in it, return
     if (
       data.username != actualRoom.user1name &&
       actualRoom.user1name != "" &&
@@ -75,46 +48,75 @@ io.on("connection", (socket) => {
       socket.emit("full-room");
       return;
     }
+    //else join, and send back the information
     socket.join(actualRoom.code);
     socket.emit("room-data", actualRoom);
   });
-  socket.on("next-round", (data) => {
-    const actualRoom = getRoom(data.room);
-    if (actualRoom.message) {
-      socket.emit("no-room");
+  //handling the users clicks
+  socket.on("click", (data) => {
+    const actualRoom = getRoom(data.room, socket);
+    if (actualRoom == "no-room") return;
+    //if its just for the connection to fire up, then join the room and return
+    if (data.preConnect == true) {
+      socket.join(actualRoom.code);
       return;
     }
+    if (actualRoom.user1name === data.username)
+      actualRoom.user1fields.push(data.cell);
+    if (actualRoom.user2name === data.username)
+      actualRoom.user2fields.push(data.cell);
+    socket.to(actualRoom.code).emit("opponent-click", data.cell);
+  });
+  //handling the win
+  socket.on("win", (data) => {
+    const actualRoom = getRoom(data.room, socket);
+    if (actualRoom == "no-room") return;
+    //increase the wins value of the right user
+    if (actualRoom.user1symbol == data.player) actualRoom.user1wins++;
+    if (actualRoom.user2symbol == data.player) actualRoom.user2wins++;
+    socket.to(actualRoom.code).emit("lose", data.player);
+  });
+  //handling the tie event
+  socket.on("tie", (data) => {
+    const actualRoom = getRoom(data.room, socket);
+    if (actualRoom == "no-room") return;
+    //increase the ties value
+    actualRoom.ties++;
+    socket.to(actualRoom.code).emit("tie");
+  });
+  //handling the next-round event
+  socket.on("next-round", (data) => {
+    const actualRoom = getRoom(data.room, socket);
+    if (actualRoom == "no-room") return;
+    //if its just for the connection to fire up, then join the room and return
     if (data.preConnect) {
       socket.join(actualRoom.code);
       return;
     }
+    //call the resetRoom and send the event to the client
     resetRoom(actualRoom);
     socket.to(actualRoom.code).emit("reseted");
   });
+  //handling when a user disconnect with the exit button
   socket.on("exit", (room) => {
     socket.leave(room);
-    const actualRoom = getRoom(room);
-    if (actualRoom.message) {
-      socket.emit("no-room");
-      return;
-    }
+    //leave the room
+    const actualRoom = getRoom(room, socket);
+    if (actualRoom == "no-room") return;
+    //delete the room from the database and send the event to the other client
     const deleteIndex = db.findIndex((room) => room.code == actualRoom.code);
     db.splice(deleteIndex, 1);
     socket.to(actualRoom.code).emit("deleted");
   });
 });
-function resetRoom(room) {
-  room.user1symbol = "";
-  room.user2symbol = "";
-  room.user1fields = [];
-  room.user2fields = [];
-}
 
+//UTILITY FUNCTIONS
+//handles a room joining request
 function handleConnect(data, socket) {
   const username = data.username;
   const code = data.code;
-  const actualRoom = getRoom(code);
-  if (actualRoom.message) return;
+  const actualRoom = getRoom(code, socket);
+  if (actualRoom == "no-room") return;
   if (actualRoom.user1name == "") {
     actualRoom.user1name = username;
     socket.join(actualRoom.code);
@@ -128,15 +130,27 @@ function handleConnect(data, socket) {
   socket.emit("full-room");
 }
 
-function getRoom(room) {
+//resets the room, so you can play more games in one room
+function resetRoom(room) {
+  room.user1symbol = "";
+  room.user2symbol = "";
+  room.user1fields = [];
+  room.user2fields = [];
+}
+
+//gets the actual room from the database
+function getRoom(room, socket) {
   const actualRoom = db.find((collection) => collection.code === room);
+  //if the room doesn't exist then send an error
   if (actualRoom == null) {
-    const error = { message: "Room does not exist" };
-    return error;
+    socket.emit("no-room");
+    return "no-room";
   }
   return actualRoom;
 }
 
+//handling when /generatecode is called
 app.use("/generatecode", generatecode);
 
+//start running the server
 server.listen(process.env.PORT || 3000, () => console.log("Server started."));
