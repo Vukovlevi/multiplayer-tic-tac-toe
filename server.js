@@ -20,7 +20,7 @@ io.on("connection", (socket) => {
     const actualRoom = getRoom(data.room, socket);
     if (actualRoom == "no-room") return;
     if (actualRoom.user1symbol != "") {
-      socket.emit("sync-user"); //this triggers the client who joined second
+      socket.emit("sync-error"); //this triggers the client who joined second
       socket.to(actualRoom.code).emit("X-sync"); //this triggers the client who joined first
       return;
     }
