@@ -9,7 +9,7 @@ const generatecode = require("./rest/code-generator");
 const db = require("./db");
 
 //setting up the static site for the client
-app.use(express.static("./public"));
+app.use(express.static("../client/dist"));
 
 //socket.io events
 io.on("connection", (socket) => {
@@ -20,7 +20,8 @@ io.on("connection", (socket) => {
     const actualRoom = getRoom(data.room, socket);
     if (actualRoom == "no-room") return;
     if (actualRoom.user1symbol != "") {
-      socket.emit("sync-user"); // this should fix the synchronization problem when they're both clicking early
+      socket.emit("sync-user"); //this triggers the client who joined second
+      socket.to(actualRoom.code).emit("X-sync"); //this triggers the client who joined first
       return;
     }
     //setting the symbols, the set-user only activates once - on the firs click
