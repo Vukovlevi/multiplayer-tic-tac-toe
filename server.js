@@ -30,11 +30,12 @@ io.on("connection", (socket) => {
         if (actualRoom.user2name == data.username)
           actualRoom.user2fields.splice(0, 1);
         return;
+      } else {
+        socket.emit("sync-error"); //this triggers the client who joined second
+        socket.to(actualRoom.code).emit("X-sync"); //this triggers the client who joined first
+        socket.to(actualRoom.code).emit("opponent-click", data.cell);
+        return;
       }
-      socket.emit("sync-error"); //this triggers the client who joined second
-      socket.to(actualRoom.code).emit("X-sync"); //this triggers the client who joined first
-      socket.to(actualRoom.code).emit("opponent-click", data.cell);
-      return;
     }
     //setting the symbols, the set-user only activates once - on the firs click
     if (actualRoom.user1name === data.username) {
