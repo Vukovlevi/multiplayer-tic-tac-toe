@@ -19,14 +19,21 @@ io.on("connection", (socket) => {
   socket.on("set-user", (data) => {
     const actualRoom = getRoom(data.room, socket);
     if (actualRoom == "no-room") return;
+    //if tehy're both clicked early then we handle it here
     if (actualRoom.user1symbol != "") {
       pushDatabase(actualRoom, data.username, data.cell);
+      //if the're both clicked the same field, the first can have it, the second has to pick another
       if (actualRoom.user1fields[0] == actualRoom.user2fields[0]) {
         socket.emit("you-are-O"); //if they clicked the same field, trigger the second user to be the "O" player
+        if (actualRoom.user1name == data.username)
+          actualRoom.user1fields.splice(0, 1);
+        if (actualRoom.user2name == data.username)
+          actualRoom.user2fields.splice(0, 1);
         return;
       }
       socket.emit("sync-error"); //this triggers the client who joined second
       socket.to(actualRoom.code).emit("X-sync"); //this triggers the client who joined first
+      socket.to(actualRoom.code).emit("opponent-click", data.cell);
       return;
     }
     //setting the symbols, the set-user only activates once - on the firs click
