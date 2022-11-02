@@ -9,7 +9,7 @@ const generatecode = require("./rest/code-generator");
 const db = require("./db");
 
 //setting up the static site for the client
-app.use(express.static("../client/dist"));
+app.use(express.static("./public"));
 
 //socket.io events
 io.on("connection", (socket) => {
