@@ -9,7 +9,7 @@ const generatecode = require("./rest/code-generator");
 const db = require("./db");
 
 //setting up the static site for the client
-app.use(express.static("./public"));
+app.use(express.static("../client/dist"));
 
 //socket.io events
 io.on("connection", (socket) => {
@@ -20,6 +20,11 @@ io.on("connection", (socket) => {
     const actualRoom = getRoom(data.room, socket);
     if (actualRoom == "no-room") return;
     if (actualRoom.user1symbol != "") {
+      pushDatabase(actualRoom, data.username, data.cell);
+      if (actualRoom.user1fields[0] == actualRoom.user2fields[0]) {
+        socket.emit("you-are-O"); //if they clicked the same field, trigger the second user to be the "O" player
+        return;
+      }
       socket.emit("sync-error"); //this triggers the client who joined second
       socket.to(actualRoom.code).emit("X-sync"); //this triggers the client who joined first
       return;
@@ -33,6 +38,7 @@ io.on("connection", (socket) => {
       actualRoom.user1symbol = "O";
       actualRoom.user2symbol = "X";
     }
+    socket.to(actualRoom.code).emit("opponent-click", data.cell);
     socket.to(actualRoom.code).emit("set-opponent", "O");
   });
   //in case of an existing room, the client call the server for information
@@ -62,10 +68,7 @@ io.on("connection", (socket) => {
       socket.join(actualRoom.code);
       return;
     }
-    if (actualRoom.user1name === data.username)
-      actualRoom.user1fields.push(data.cell);
-    if (actualRoom.user2name === data.username)
-      actualRoom.user2fields.push(data.cell);
+    pushDatabase(actualRoom, data.username, data.cell);
     socket.to(actualRoom.code).emit("opponent-click", data.cell);
   });
   //handling the win
@@ -129,6 +132,12 @@ function handleConnect(data, socket) {
     return;
   }
   socket.emit("full-room");
+}
+
+//register the click to the right player in the database
+function pushDatabase(actualRoom, username, cell) {
+  if (actualRoom.user1name === username) actualRoom.user1fields.push(cell);
+  if (actualRoom.user2name === username) actualRoom.user2fields.push(cell);
 }
 
 //resets the room, so you can play more games in one room
