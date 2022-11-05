@@ -20,8 +20,8 @@ io.on("connection", (socket) => {
     const actualRoom = getRoom(data.room, socket);
     if (actualRoom == "no-room") return;
     //if tehy're both clicked early then we handle it here
+    pushDatabase(actualRoom, data.username, data.cell);
     if (actualRoom.user1symbol != "") {
-      pushDatabase(actualRoom, data.username, data.cell);
       //if the're both clicked the same field, the first can have it, the second has to pick another
       if (actualRoom.user1fields[0] == actualRoom.user2fields[0]) {
         socket.emit("you-are-O"); //if they clicked the same field, trigger the second user to be the "O" player
