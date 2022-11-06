@@ -132,11 +132,18 @@ function handleConnect(data, socket) {
   if (actualRoom.user1name == "") {
     actualRoom.user1name = username;
     socket.join(actualRoom.code);
+    socket.emit("valid-connect");
+    return;
+  }
+  //if they have the same username, dont save it and send an error
+  if (actualRoom.user1name == username) {
+    socket.emit("same-username");
     return;
   }
   if (actualRoom.user2name == "") {
     actualRoom.user2name = username;
     socket.join(actualRoom.code);
+    socket.emit("valid-connect");
     return;
   }
   socket.emit("full-room");
