@@ -1,1 +1,5 @@
 node_modules
+
+*.html
+*_templ.go
+main

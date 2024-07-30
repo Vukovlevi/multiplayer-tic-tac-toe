@@ -1,0 +1,36 @@
+package views
+
+templ login() {
+  <div class="login-form df">
+    <div class="username-container df">
+      <label for="username">Felhasználónév</label>
+      <input
+        type="text"
+        id="username"
+        class="username"
+        placeholder="Felhasználónév"
+        v-model="username"
+      />
+    </div>
+    <div class="code-container df">
+      <label for="code">Játék kódja</label>
+      <input
+        type="text"
+        id="code"
+        class="code"
+        placeholder="Játék kódja"
+        v-model="codeInput"
+      />
+      <div class="buttons df">
+        <button class="code-generator btn" @click="callCode">Kód kérése</button>
+        <button type="submit" class="connect btn" @click="connectEmit">
+          Csatlakozás
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+templ Login() {
+    @Default(login())
+}
