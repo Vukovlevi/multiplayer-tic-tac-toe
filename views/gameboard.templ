@@ -1,0 +1,26 @@
+package views
+
+import "strconv"
+import "fmt"
+
+templ GameBoard(chars []byte, wins, ties, losses int) {
+    <div class="container df">
+        <div class="header df">
+        <div class="symbols df">
+        <p class="X-icon">X</p>
+        <p class="O-icon">O</p>
+        </div>
+        <div class="exit rounded" @click="exit">Kilépés</div>
+        </div>
+        <div class="cells">
+        for i := 0; i < 9; i++ {
+            <div class="cell" data-cell={fmt.Sprintf("%d", i)} hx-get={fmt.Sprintf("/%d", i)}></div>
+        }
+        </div>
+        <div class="wins df">
+        <div class="you count rounded">Győzelem: { strconv.Itoa(wins) }</div>
+        <div class="ties count rounded">Döntetlen: { strconv.Itoa(ties) }</div>
+        <div class="opponent count rounded">Vereség: { strconv.Itoa(losses) }</div>
+        </div>
+        </div>
+}

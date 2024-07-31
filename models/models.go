@@ -1,13 +1,15 @@
 package models
 
 type Player struct {
-    username string
-    character byte
-    fields []int
+    Username string
+    Character byte
+    Fields []int
+    RoomId string
 }
 
 type Room struct {
-    player1 *Player
-    player2 *Player
-    turn byte
+    Player1 *Player
+    Player2 *Player
+    Turn byte
+    RoomId string
 }

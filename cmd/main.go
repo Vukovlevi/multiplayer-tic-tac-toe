@@ -6,6 +6,9 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
+	"github.com/google/uuid"
+	"github.com/vukovlevi/multiplayer-tic-tac-toe/models"
+	"github.com/vukovlevi/multiplayer-tic-tac-toe/storage"
 	"github.com/vukovlevi/multiplayer-tic-tac-toe/views"
 )
 
@@ -34,8 +37,37 @@ func handleLogin(w http.ResponseWriter, r *http.Request) error {
     return render(w, r, views.Login())
 }
 
+func generateRoomId() string {
+    return uuid.NewString()
+}
+
+func handleCodeRequest(w http.ResponseWriter, r *http.Request) error {
+    cookie := http.Cookie{
+        Name: "roomd-id",
+        Value: generateRoomId(),
+        HttpOnly: true,
+        Secure: false,
+    }
+    http.SetCookie(w, &cookie)
+
+    room := models.Room{
+        Player1: nil,
+        Player2: nil,
+        Turn: 'x',
+        RoomId: cookie.Value,
+    }
+
+    storage.AddGame(&room)
+    return render(w, r, views.RoomId(room.RoomId))
+}
+
 func main() {
+    storage.InitializeStores()
+
     http.HandleFunc("/", makeHTTPHandler(handleLogin))
+
+    //ideiglenesen a regi rendszer marad
+    http.HandleFunc("/generate", makeHTTPHandler(handleCodeRequest))
 
     http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./public"))))
 
